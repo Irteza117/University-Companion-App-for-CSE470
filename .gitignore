@@ -1,0 +1,24 @@
+# Ignore uploaded files and user data
+uploads/
+upload/
+
+# Ignore temporary files
+*.tmp
+*.log
+
+# Ignore IDE/Editor files
+.vscode/
+*.sublime-*
+.idea/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore backup files
+*.bak
+*.backup
+
+# Keep database files (they're needed for setup)
+# database_schema.sql
+# dummy_data.sql
