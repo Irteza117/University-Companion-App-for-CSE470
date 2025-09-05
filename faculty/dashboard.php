@@ -17,12 +17,12 @@ $assignedCourses = fetchMultipleRows($conn, $sql, "i", [$userId]);
 // Get comprehensive material statistics
 $sql = "SELECT 
         COUNT(*) as total_materials,
-        SUM(CASE WHEN cm.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as recent_materials,
-        SUM(cm.download_count) as total_downloads,
-        AVG(cm.download_count) as avg_downloads
+        SUM(CASE WHEN cm.upload_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as recent_materials,
+        COALESCE(SUM(cm.download_count), 0) as total_downloads,
+        COALESCE(AVG(cm.download_count), 0) as avg_downloads
         FROM course_materials cm
-        JOIN courses c ON cm.course_id = c.id
-        WHERE c.faculty_id = ? AND cm.is_active = 1";
+        JOIN course_assignments ca ON cm.course_id = ca.course_id
+        WHERE ca.faculty_id = ? AND cm.is_active = 1";
 $materialStats = fetchSingleRow($conn, $sql, "i", [$userId]);
 $totalMaterials = $materialStats['total_materials'] ?? 0;
 $recentMaterials = $materialStats['recent_materials'] ?? 0;
@@ -32,20 +32,22 @@ $avgDownloads = round($materialStats['avg_downloads'] ?? 0, 1);
 // Get material breakdown by course
 $sql = "SELECT c.course_code, c.course_name, 
         COUNT(cm.id) as material_count,
-        SUM(cm.download_count) as course_downloads
-        FROM courses c
+        COALESCE(SUM(cm.download_count), 0) as course_downloads
+        FROM course_assignments ca
+        JOIN courses c ON ca.course_id = c.id
         LEFT JOIN course_materials cm ON c.id = cm.course_id AND cm.is_active = 1
-        WHERE c.faculty_id = ?
+        WHERE ca.faculty_id = ?
         GROUP BY c.id, c.course_code, c.course_name
         ORDER BY material_count DESC";
 $materialsByCourse = fetchMultipleRows($conn, $sql, "i", [$userId]);
 
 // Get recent material activities
-$sql = "SELECT cm.title, cm.created_at, cm.download_count, c.course_code
+$sql = "SELECT cm.title, cm.upload_date, COALESCE(cm.download_count, 0) as download_count, c.course_code
         FROM course_materials cm
-        JOIN courses c ON cm.course_id = c.id
-        WHERE c.faculty_id = ? AND cm.is_active = 1
-        ORDER BY cm.created_at DESC LIMIT 5";
+        JOIN course_assignments ca ON cm.course_id = ca.course_id
+        JOIN courses c ON ca.course_id = c.id
+        WHERE ca.faculty_id = ? AND cm.is_active = 1
+        ORDER BY cm.upload_date DESC LIMIT 5";
 $recentMaterialActivity = fetchMultipleRows($conn, $sql, "i", [$userId]);
 
 // Get assignment statistics
@@ -54,8 +56,8 @@ $sql = "SELECT
         COUNT(CASE WHEN a.due_date >= NOW() THEN 1 END) as upcoming_assignments,
         COUNT(CASE WHEN a.due_date < NOW() THEN 1 END) as past_assignments
         FROM assignments a
-        JOIN courses c ON a.course_id = c.id
-        WHERE c.faculty_id = ? AND a.is_active = 1";
+        JOIN course_assignments ca ON a.course_id = ca.course_id
+        WHERE ca.faculty_id = ? AND a.is_active = 1";
 $assignmentStats = fetchSingleRow($conn, $sql, "i", [$userId]);
 $totalAssignments = $assignmentStats['total_assignments'] ?? 0;
 $upcomingAssignments = $assignmentStats['upcoming_assignments'] ?? 0;
@@ -64,10 +66,10 @@ $pastAssignments = $assignmentStats['past_assignments'] ?? 0;
 // Get feedback statistics
 $sql = "SELECT 
         COUNT(*) as total_feedback,
-        AVG(cf.rating) as avg_rating
+        COALESCE(AVG(cf.rating), 0) as avg_rating
         FROM course_feedback cf
-        JOIN courses c ON cf.course_id = c.id
-        WHERE c.faculty_id = ?";
+        JOIN course_assignments ca ON cf.course_id = ca.course_id
+        WHERE ca.faculty_id = ?";
 $feedbackStats = fetchSingleRow($conn, $sql, "i", [$userId]);
 $totalFeedback = $feedbackStats['total_feedback'] ?? 0;
 $avgRating = round($feedbackStats['avg_rating'] ?? 0, 1);
@@ -75,8 +77,8 @@ $avgRating = round($feedbackStats['avg_rating'] ?? 0, 1);
 // Get recent assignments
 $sql = "SELECT a.title, a.due_date, c.course_name, c.course_code
         FROM assignments a
-        JOIN courses c ON a.course_id = c.id
-        JOIN course_assignments ca ON c.id = ca.course_id
+        JOIN course_assignments ca ON a.course_id = ca.course_id
+        JOIN courses c ON ca.course_id = c.id
         WHERE ca.faculty_id = ? AND a.is_active = 1
         ORDER BY a.created_at DESC LIMIT 5";
 $recentAssignments = fetchMultipleRows($conn, $sql, "i", [$userId]);
@@ -129,9 +131,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -385,7 +387,7 @@ $conn->close();
                                                 <strong><?php echo htmlspecialchars($material['title']); ?></strong><br>
                                                 <small class="text-muted">
                                                     <span class="badge bg-secondary"><?php echo htmlspecialchars($material['course_code']); ?></span>
-                                                    <?php echo date('M j, Y', strtotime($material['created_at'])); ?>
+                                                    <?php echo date('M j, Y', strtotime($material['upload_date'])); ?>
                                                 </small>
                                             </div>
                                             <div class="text-end">

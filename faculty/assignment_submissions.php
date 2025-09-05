@@ -39,7 +39,7 @@ if (!$assignment) {
 // Get all submissions for this assignment
 $submissionsSql = "SELECT s.id, s.submission_text, s.file_name, s.file_path, s.submitted_at, 
                           s.grade, s.feedback, s.graded_at,
-                          u.full_name, u.email, u.student_id
+                          u.full_name, u.email, u.id as user_id
                    FROM assignment_submissions s
                    JOIN users u ON s.student_id = u.id
                    WHERE s.assignment_id = ?
@@ -47,7 +47,7 @@ $submissionsSql = "SELECT s.id, s.submission_text, s.file_name, s.file_path, s.s
 $submissions = fetchMultipleRows($conn, $submissionsSql, "i", [$assignmentId]);
 
 // Get enrolled students who haven't submitted
-$noSubmissionSql = "SELECT u.full_name, u.email, u.student_id
+$noSubmissionSql = "SELECT u.full_name, u.email, u.id as user_id
                     FROM course_enrollments ce
                     JOIN users u ON ce.student_id = u.id
                     WHERE ce.course_id = (SELECT course_id FROM assignments WHERE id = ?) 
@@ -89,9 +89,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -140,11 +140,7 @@ $conn->close();
                                 <i class="bi bi-chat-square-text"></i> Course Feedback
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
+
                     </ul>
                 </div>
             </nav>
@@ -271,7 +267,7 @@ $conn->close();
                                                 <div>
                                                     <h6 class="mb-1"><?php echo htmlspecialchars($submission['full_name']); ?></h6>
                                                     <small class="text-muted">
-                                                        ID: <?php echo htmlspecialchars($submission['student_id']); ?> • 
+                                                        ID: <?php echo htmlspecialchars($submission['user_id']); ?> • 
                                                         <?php echo htmlspecialchars($submission['email']); ?>
                                                     </small>
                                                 </div>
@@ -416,7 +412,7 @@ $conn->close();
                                             <div>
                                                 <strong><?php echo htmlspecialchars($student['full_name']); ?></strong><br>
                                                 <small class="text-muted">
-                                                    ID: <?php echo htmlspecialchars($student['student_id']); ?>
+                                                    ID: <?php echo htmlspecialchars($student['user_id']); ?>
                                                 </small>
                                             </div>
                                         </div>

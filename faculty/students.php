@@ -13,8 +13,8 @@ $coursesSql = "SELECT id, course_code, course_name FROM courses WHERE faculty_id
 $courses = fetchMultipleRows($conn, $coursesSql, "i", [$userId]);
 
 // Build students query
-$studentsSql = "SELECT DISTINCT u.id, u.full_name, u.email, u.phone, u.student_id, u.academic_year,
-                       d.name as department_name,
+$studentsSql = "SELECT DISTINCT u.id, u.full_name, u.email, u.phone, u.id as student_id, u.created_at as academic_year,
+                       u.department as department_name,
                        GROUP_CONCAT(DISTINCT c.course_code ORDER BY c.course_code SEPARATOR ', ') as enrolled_courses,
                        COUNT(DISTINCT ce.course_id) as course_count,
                        AVG(CASE WHEN asub.grade IS NOT NULL THEN asub.grade ELSE NULL END) as avg_grade,
@@ -23,7 +23,6 @@ $studentsSql = "SELECT DISTINCT u.id, u.full_name, u.email, u.phone, u.student_i
                 FROM course_enrollments ce
                 JOIN users u ON ce.student_id = u.id
                 JOIN courses c ON ce.course_id = c.id
-                LEFT JOIN departments d ON u.department_id = d.id
                 LEFT JOIN assignments a ON c.id = a.course_id AND a.is_active = 1
                 LEFT JOIN assignment_submissions asub ON a.id = asub.assignment_id AND asub.student_id = u.id
                 WHERE c.faculty_id = ? AND ce.status = 'enrolled' AND u.is_active = 1";
@@ -37,7 +36,7 @@ if (!empty($selectedCourseId)) {
     $types .= "i";
 }
 
-$studentsSql .= " GROUP BY u.id, u.full_name, u.email, u.phone, u.student_id, u.academic_year, d.name
+$studentsSql .= " GROUP BY u.id, u.full_name, u.email, u.phone, u.created_at, u.department
                   ORDER BY u.full_name";
 
 $students = fetchMultipleRows($conn, $studentsSql, $types, $params);
@@ -82,7 +81,7 @@ $conn->close();
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -266,7 +265,7 @@ $conn->close();
                                                         <div>
                                                             <strong><?php echo htmlspecialchars($student['full_name']); ?></strong>
                                                             <br>
-                                                            <small class="text-muted">ID: <?php echo htmlspecialchars($student['student_id']); ?></small>
+                                                            <small class="text-muted">ID: <?php echo htmlspecialchars($student['id']); ?></small>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -289,7 +288,7 @@ $conn->close();
                                                 </td>
                                                 <td>
                                                     <small>
-                                                        <strong>Year:</strong> <?php echo htmlspecialchars($student['academic_year'] ?? 'N/A'); ?>
+                                                        <strong>Year:</strong> <?php echo htmlspecialchars(date('Y', strtotime($student['academic_year'])) ?? 'N/A'); ?>
                                                         <br>
                                                         <strong>Department:</strong> <?php echo htmlspecialchars($student['department_name'] ?? 'N/A'); ?>
                                                     </small>

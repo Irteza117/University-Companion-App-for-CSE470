@@ -49,14 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assignment']))
         if ($existing) {
             // Update existing submission
             $sql = "UPDATE assignment_submissions 
-                    SET submission_text = ?, file_name = ?, file_path = ?, submitted_at = NOW()
+                    SET submission_url = ?, submission_date = NOW()
                     WHERE assignment_id = ? AND student_id = ?";
-            executeQuery($conn, $sql, "sssii", [$submissionText, $fileName, $filePath, $assignmentId, $userId]);
+            executeQuery($conn, $sql, "sii", [$filePath ?? $submissionText ?? 'text_submission', $assignmentId, $userId]);
         } else {
             // Create new submission
-            $sql = "INSERT INTO assignment_submissions (assignment_id, student_id, submission_text, file_name, file_path, submitted_at)
-                    VALUES (?, ?, ?, ?, ?, NOW())";
-            executeQuery($conn, $sql, "iisss", [$assignmentId, $userId, $submissionText, $fileName, $filePath]);
+            $sql = "INSERT INTO assignment_submissions (assignment_id, student_id, submission_url, submission_date)
+                    VALUES (?, ?, ?, NOW())";
+            executeQuery($conn, $sql, "iis", [$assignmentId, $userId, $filePath ?? $submissionText ?? 'text_submission']);
         }
         
         $success = "Assignment submitted successfully!";
@@ -66,9 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assignment']))
 }
 
 // Get student's assignments
-$sql = "SELECT a.id, a.title, a.description, a.due_date, a.max_points,
+$sql = "SELECT a.id, a.title, a.description, a.due_date, 
+               COALESCE(a.max_points, a.max_marks, 100) as max_points,
                c.course_code, c.course_name,
-               s.id as submission_id, s.submission_text, s.file_name, s.submitted_at, s.grade, s.feedback,
+               s.id as submission_id, 
+               COALESCE(s.submission_text, '') as submission_text, 
+               COALESCE(s.file_name, '') as file_name, 
+               COALESCE(s.submitted_at, s.submission_date) as submitted_at,
+               COALESCE(s.grade, s.marks_obtained) as grade, 
+               COALESCE(s.feedback, '') as feedback,
                CASE 
                    WHEN a.due_date < NOW() THEN 'overdue'
                    WHEN a.due_date < DATE_ADD(NOW(), INTERVAL 24 HOUR) THEN 'due_soon'
@@ -113,9 +119,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -302,7 +308,7 @@ $conn->close();
                                                         <i class="bi bi-check-circle"></i>
                                                         Submitted: <?php echo date('M j, Y g:i A', strtotime($assignment['submitted_at'])); ?>
                                                     </small>
-                                                    <?php if ($assignment['file_name']): ?>
+                                                    <?php if (!empty($assignment['file_name'])): ?>
                                                         <br><small>
                                                             <i class="bi bi-paperclip"></i>
                                                             <?php echo htmlspecialchars($assignment['file_name']); ?>
@@ -313,7 +319,7 @@ $conn->close();
                                                 <?php if ($assignment['grade'] !== null): ?>
                                                     <div class="grade-display">
                                                         <strong>Grade: <?php echo $assignment['grade']; ?>/<?php echo $assignment['max_points']; ?></strong>
-                                                        <?php if ($assignment['feedback']): ?>
+                                                        <?php if (!empty($assignment['feedback'])): ?>
                                                             <div class="feedback mt-2">
                                                                 <small class="text-muted">
                                                                     <strong>Feedback:</strong><br>
@@ -377,7 +383,7 @@ $conn->close();
                                                               name="submission_text" 
                                                               rows="5" 
                                                               placeholder="Enter your submission text here..."><?php 
-                                                        echo $assignment['submission_id'] ? htmlspecialchars($assignment['submission_text']) : '';
+                                                        echo $assignment['submission_id'] ? htmlspecialchars($assignment['submission_text'] ?? '') : '';
                                                     ?></textarea>
                                                 </div>
 
@@ -393,7 +399,7 @@ $conn->close();
                                                     <div class="form-text">
                                                         Allowed formats: PDF, DOC, DOCX, TXT, ZIP (Max 10MB)
                                                     </div>
-                                                    <?php if ($assignment['file_name']): ?>
+                                                    <?php if (!empty($assignment['file_name'])): ?>
                                                         <small class="text-muted">
                                                             Current file: <?php echo htmlspecialchars($assignment['file_name']); ?>
                                                         </small>
@@ -444,7 +450,7 @@ $conn->close();
                                                 <div class="mb-3">
                                                     <strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($assignment['submitted_at'])); ?>
                                                 </div>
-                                                <?php if ($assignment['submission_text']): ?>
+                                                <?php if (!empty($assignment['submission_text'])): ?>
                                                     <div class="mb-3">
                                                         <strong>Text:</strong><br>
                                                         <div class="bg-light p-3 rounded">
@@ -452,7 +458,7 @@ $conn->close();
                                                         </div>
                                                     </div>
                                                 <?php endif; ?>
-                                                <?php if ($assignment['file_name']): ?>
+                                                <?php if (!empty($assignment['file_name'])): ?>
                                                     <div class="mb-3">
                                                         <strong>File:</strong> <?php echo htmlspecialchars($assignment['file_name']); ?>
                                                     </div>
@@ -465,7 +471,7 @@ $conn->close();
                                                             <?php echo $assignment['grade']; ?>/<?php echo $assignment['max_points']; ?>
                                                         </span>
                                                     </div>
-                                                    <?php if ($assignment['feedback']): ?>
+                                                    <?php if (!empty($assignment['feedback'])): ?>
                                                         <div class="mb-3">
                                                             <strong>Feedback:</strong><br>
                                                             <div class="bg-light p-3 rounded">

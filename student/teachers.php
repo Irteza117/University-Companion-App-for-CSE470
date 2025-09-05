@@ -10,36 +10,36 @@ $departmentFilter = $_GET['department'] ?? '';
 
 // Build search query
 $sql = "SELECT u.id, u.full_name, u.email, u.phone, 
-               d.name as department_name,
+               u.department as department_name,
                GROUP_CONCAT(DISTINCT c.course_code ORDER BY c.course_code) as courses
         FROM users u
-        JOIN departments d ON u.department_id = d.id
-        LEFT JOIN courses c ON u.id = c.faculty_id AND c.academic_year = '2024'
+        LEFT JOIN course_assignments ca ON u.id = ca.faculty_id
+        LEFT JOIN courses c ON ca.course_id = c.id AND c.academic_year = '2024'
         WHERE u.role = 'faculty' AND u.is_active = 1";
 
 $params = [];
 $types = "";
 
 if (!empty($searchTerm)) {
-    $sql .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR d.name LIKE ?)";
+    $sql .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR u.department LIKE ?)";
     $searchParam = '%' . $searchTerm . '%';
     $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
     $types .= "sss";
 }
 
 if (!empty($departmentFilter)) {
-    $sql .= " AND d.id = ?";
+    $sql .= " AND u.department = ?";
     $params[] = $departmentFilter;
-    $types .= "i";
+    $types .= "s";
 }
 
-$sql .= " GROUP BY u.id, u.full_name, u.email, u.phone, d.name
+$sql .= " GROUP BY u.id, u.full_name, u.email, u.phone, u.department
           ORDER BY u.full_name";
 
 $faculty = fetchMultipleRows($conn, $sql, $types, $params);
 
 // Get all departments for filter dropdown
-$departmentSql = "SELECT id, name FROM departments WHERE is_active = 1 ORDER BY name";
+$departmentSql = "SELECT DISTINCT department as name FROM users WHERE role = 'faculty' AND department IS NOT NULL AND department != '' ORDER BY department";
 $departments = fetchMultipleRows($conn, $departmentSql);
 
 $conn->close();
@@ -73,9 +73,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -169,8 +169,8 @@ $conn->close();
                                 <select class="form-select" name="department">
                                     <option value="">All Departments</option>
                                     <?php foreach ($departments as $dept): ?>
-                                        <option value="<?php echo $dept['id']; ?>" 
-                                                <?php echo ($departmentFilter == $dept['id']) ? 'selected' : ''; ?>>
+                                        <option value="<?php echo htmlspecialchars($dept['name']); ?>" 
+                                                <?php echo ($departmentFilter == $dept['name']) ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars($dept['name']); ?>
                                         </option>
                                     <?php endforeach; ?>

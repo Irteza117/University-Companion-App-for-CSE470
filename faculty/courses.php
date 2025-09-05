@@ -7,8 +7,7 @@ $userId = $_SESSION['user_id'];
 
 // Get faculty's courses with enrollment details
 $coursesSql = "SELECT c.id, c.course_code, c.course_name, c.description, c.credit_hours, 
-                      c.academic_year, c.semester, c.max_students,
-                      d.name as department_name,
+                      c.academic_year, c.semester, c.department, c.max_students,
                       COUNT(ce.id) as enrolled_students,
                       GROUP_CONCAT(DISTINCT s.day_of_week ORDER BY 
                           CASE s.day_of_week 
@@ -22,13 +21,13 @@ $coursesSql = "SELECT c.id, c.course_code, c.course_name, c.description, c.credi
                           END SEPARATOR ', ') as schedule_days,
                       MIN(s.start_time) as earliest_class,
                       MAX(s.end_time) as latest_class
-               FROM courses c
-               LEFT JOIN departments d ON c.department_id = d.id
+               FROM course_assignments ca
+               JOIN courses c ON ca.course_id = c.id
                LEFT JOIN course_enrollments ce ON c.id = ce.course_id AND ce.status = 'enrolled'
                LEFT JOIN class_schedule s ON c.id = s.course_id
-               WHERE c.faculty_id = ? AND c.is_active = 1
+               WHERE ca.faculty_id = ? AND c.is_active = 1
                GROUP BY c.id, c.course_code, c.course_name, c.description, c.credit_hours, 
-                        c.academic_year, c.semester, c.max_students, d.name
+                        c.academic_year, c.semester, c.department, c.max_students
                ORDER BY c.course_code";
 $courses = fetchMultipleRows($conn, $coursesSql, "i", [$userId]);
 
@@ -65,7 +64,7 @@ $conn->close();
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -197,7 +196,7 @@ $conn->close();
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <h6 class="card-title mb-1"><?php echo htmlspecialchars($course['course_code']); ?></h6>
-                                                <small class="text-muted"><?php echo htmlspecialchars($course['department_name']); ?></small>
+                                                <small class="text-muted"><?php echo htmlspecialchars($course['department']); ?></small>
                                             </div>
                                             <span class="badge bg-primary"><?php echo $course['credit_hours']; ?> credits</span>
                                         </div>
@@ -215,7 +214,7 @@ $conn->close();
                                                     <br><small class="text-muted">Students</small>
                                                 </div>
                                                 <div class="col-6">
-                                                    <strong><?php echo $course['max_students'] ?: 'Unlimited'; ?></strong>
+                                                    <strong><?php echo ($course['max_students'] ?? null) ? $course['max_students'] : 'Unlimited'; ?></strong>
                                                     <br><small class="text-muted">Max Capacity</small>
                                                 </div>
                                             </div>

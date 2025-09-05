@@ -10,7 +10,7 @@ $sql = "SELECT c.course_code, c.course_name, c.credit_hours, u.full_name as facu
         FROM course_enrollments ce
         JOIN courses c ON ce.course_id = c.id
         LEFT JOIN course_assignments ca ON c.id = ca.course_id
-        LEFT JOIN users u ON ca.faculty_id = u.id
+        LEFT JOIN users u ON ca.faculty_id = u.id AND u.role = 'faculty'
         WHERE ce.student_id = ? AND ce.status = 'enrolled'";
 $enrolledCourses = fetchMultipleRows($conn, $sql, "i", [$userId]);
 
@@ -71,9 +71,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>

@@ -105,6 +105,11 @@ $conn->close();
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="student_assignments.php">
+                                <i class="bi bi-person-plus"></i> Student Assignments
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="departments.php">
                                 <i class="bi bi-building"></i> Departments
                             </a>
@@ -124,11 +129,7 @@ $conn->close();
                                 <i class="bi bi-calendar-event"></i> Events
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
+
                         <li class="nav-item">
                             <a class="nav-link" href="settings.php">
                                 <i class="bi bi-gear"></i> Settings
@@ -326,9 +327,7 @@ $conn->close();
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
-                                <div class="text-center mt-3">
-                                    <a href="reports.php" class="btn btn-outline-primary btn-sm">View Detailed Reports</a>
-                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -351,6 +350,11 @@ $conn->close();
                                     <div class="col-md-3 mb-2">
                                         <a href="courses.php" class="btn btn-outline-success w-100">
                                             <i class="bi bi-book"></i> Add Course
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <a href="student_assignments.php" class="btn btn-outline-primary w-100">
+                                            <i class="bi bi-person-plus"></i> Assign Students
                                         </a>
                                     </div>
                                     <div class="col-md-3 mb-2">

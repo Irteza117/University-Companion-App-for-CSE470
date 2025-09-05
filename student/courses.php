@@ -8,8 +8,8 @@ $userId = $_SESSION['user_id'];
 // Get student's enrolled courses with detailed information
 $sql = "SELECT c.id, c.course_code, c.course_name, c.description, c.credit_hours, c.academic_year,
                u.full_name as faculty_name, u.email as faculty_email,
-               d.name as department_name,
-               ce.enrolled_at, ce.status,
+               c.department as department_name,
+               ce.enrollment_date as enrolled_at, ce.status,
                COUNT(DISTINCT cm.id) as material_count,
                COUNT(DISTINCT a.id) as assignment_count,
                COUNT(DISTINCT asub.id) as submitted_assignments,
@@ -17,16 +17,16 @@ $sql = "SELECT c.id, c.course_code, c.course_name, c.description, c.credit_hours
                COUNT(DISTINCT cf.id) as feedback_count
         FROM course_enrollments ce
         JOIN courses c ON ce.course_id = c.id
-        JOIN users u ON c.faculty_id = u.id
-        JOIN departments d ON c.department_id = d.id
+        LEFT JOIN course_assignments ca ON c.id = ca.course_id
+        LEFT JOIN users u ON ca.faculty_id = u.id AND u.role = 'faculty'
         LEFT JOIN course_materials cm ON c.id = cm.course_id AND cm.is_active = 1
         LEFT JOIN assignments a ON c.id = a.course_id AND a.is_active = 1
         LEFT JOIN assignment_submissions asub ON a.id = asub.assignment_id AND asub.student_id = ?
         LEFT JOIN course_feedback cf ON c.id = cf.course_id
         WHERE ce.student_id = ?
         GROUP BY c.id, c.course_code, c.course_name, c.description, c.credit_hours, c.academic_year,
-                 u.full_name, u.email, d.name, ce.enrolled_at, ce.status
-        ORDER BY ce.enrolled_at DESC";
+                 u.full_name, u.email, c.department, ce.enrollment_date, ce.status
+        ORDER BY ce.enrollment_date DESC";
 $enrolledCourses = fetchMultipleRows($conn, $sql, "ii", [$userId, $userId]);
 
 // Get course statistics
@@ -67,9 +67,9 @@ $conn->close();
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="../profile.php"><i class="bi bi-person"></i> Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="../logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                            <li><a class="dropdown-item" href="../php/logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -195,7 +195,7 @@ $conn->close();
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <h6 class="mb-0"><?php echo htmlspecialchars($course['course_code']); ?></h6>
-                                                <small class="text-muted"><?php echo htmlspecialchars($course['department_name']); ?></small>
+                                                <small class="text-muted"><?php echo htmlspecialchars($course['department_name'] ?? 'No Department'); ?></small>
                                             </div>
                                             <span class="badge bg-primary"><?php echo $course['credit_hours']; ?> Credits</span>
                                         </div>
